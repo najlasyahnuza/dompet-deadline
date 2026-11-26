@@ -1,13 +1,7 @@
 package com.dompetdeadline.ui;
 
 import javax.swing.JPanel;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.text.NumberFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -15,16 +9,17 @@ import java.util.Map;
 
 public class GrafikPengeluaranPanel extends JPanel {
     private Map<String, Long> dataPengeluaran = new LinkedHashMap<>();
-    private final Color[] warnaBatang = {
-        new Color(59, 130, 246),
-        new Color(16, 185, 129),
-        new Color(245, 158, 11),
-        new Color(239, 68, 68),
-        new Color(139, 92, 246)
+    private final Color[] paletPink = {
+        new Color(219, 39, 119),  // Rose 600
+        new Color(244, 63, 94),   // Pink-Red 500
+        new Color(236, 72, 153),  // Pink 500
+        new Color(190, 24, 93),   // Deep Berry 700
+        new Color(244, 114, 182), // Soft Pink 400
+        new Color(162, 28, 175)   // Fuchsia-Plum
     };
 
     public GrafikPengeluaranPanel() {
-        setPreferredSize(new Dimension(420, 190));
+        setPreferredSize(new Dimension(460, 210));
         setBackground(Color.WHITE);
     }
 
@@ -38,18 +33,15 @@ public class GrafikPengeluaranPanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         int width = getWidth();
         int height = getHeight();
 
-        g2.setFont(new Font("SansSerif", Font.BOLD, 13));
-        g2.setColor(new Color(30, 41, 59));
-        g2.drawString("Grafik Pengeluaran per Kategori", 14, 22);
-
         if (dataPengeluaran.isEmpty()) {
             g2.setFont(new Font("SansSerif", Font.ITALIC, 12));
-            g2.setColor(Color.GRAY);
-            g2.drawString("Belum ada data pengeluaran.", 14, height / 2);
+            g2.setColor(new Color(157, 23, 77));
+            g2.drawString("Belum ada kategori pengeluaran.", 20, height / 2);
             return;
         }
 
@@ -59,47 +51,68 @@ public class GrafikPengeluaranPanel extends JPanel {
         }
         if (maxVal == 0) maxVal = 1;
 
-        int padLeft = 18;
-        int padRight = 18;
-        int padTop = 42;
+        int padLeft = 64;
+        int padRight = 20;
+        int padTop = 26;
         int padBottom = 38;
         int chartWidth = width - padLeft - padRight;
         int chartHeight = height - padTop - padBottom;
 
-        g2.setColor(new Color(226, 232, 240));
-        g2.drawLine(padLeft, padTop + chartHeight, width - padRight, padTop + chartHeight);
+        NumberFormat nf = NumberFormat.getInstance(Locale.of("id", "ID"));
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        FontMetrics fm = g2.getFontMetrics();
+
+        // Garis kisi horizontal & label sumbu Y (0, 50%, 100%)
+        for (int step = 0; step <= 2; step++) {
+            int yGrid = padTop + chartHeight - (step * chartHeight / 2);
+            long nilaiGrid = (maxVal * step) / 2;
+
+            g2.setColor(step == 0 ? new Color(244, 114, 182) : new Color(252, 231, 243));
+            g2.drawLine(padLeft, yGrid, width - padRight, yGrid);
+
+            String labelY = "Rp" + nf.format(nilaiGrid);
+            int labelYWidth = fm.stringWidth(labelY);
+            g2.setColor(new Color(131, 24, 67));
+            g2.drawString(labelY, padLeft - labelYWidth - 8, yGrid + 4);
+        }
+
+        // Sumbu vertikal Y
+        g2.setColor(new Color(244, 114, 182));
+        g2.drawLine(padLeft, padTop, padLeft, padTop + chartHeight);
 
         int count = dataPengeluaran.size();
         int slotWidth = chartWidth / Math.max(count, 1);
-        int barWidth = Math.min(48, Math.max(20, slotWidth - 20));
-        NumberFormat nf = NumberFormat.getInstance(new Locale("id", "ID"));
+        int barWidth = Math.min(44, Math.max(18, slotWidth - 18));
 
         int idx = 0;
-        FontMetrics fm = g2.getFontMetrics(new Font("SansSerif", Font.PLAIN, 10));
-
         for (Map.Entry<String, Long> entry : dataPengeluaran.entrySet()) {
             String kategori = entry.getKey();
             long nilai = entry.getValue();
 
-            int barHeight = (int) ((double) nilai / maxVal * (chartHeight - 15));
+            int barHeight = nilai == 0 ? 3 : Math.max(6, (int) ((double) nilai / maxVal * (chartHeight - 14)));
             int x = padLeft + idx * slotWidth + (slotWidth - barWidth) / 2;
             int y = padTop + chartHeight - barHeight;
 
-            g2.setColor(warnaBatang[idx % warnaBatang.length]);
-            g2.fillRoundRect(x, y, barWidth, barHeight, 6, 6);
+            Color cUtama = paletPink[idx % paletPink.length];
+            Color cAtas = cUtama.brighter();
+            GradientPaint gp = new GradientPaint(x, y, cAtas, x, y + barHeight, cUtama);
+            g2.setPaint(gp);
+            g2.fillRoundRect(x, y, barWidth, barHeight, 8, 8);
 
             // Label nominal di atas batang
             g2.setFont(new Font("SansSerif", Font.BOLD, 10));
-            g2.setColor(new Color(51, 65, 85));
-            String labelNilai = nilai > 0 ? "Rp" + nf.format(nilai) : "0";
+            g2.setColor(new Color(131, 24, 67));
+            String labelNilai = nilai > 0 ? "Rp" + nf.format(nilai) : "Rp0";
             int nilaiWidth = fm.stringWidth(labelNilai);
-            g2.drawString(labelNilai, x + (barWidth - nilaiWidth) / 2, Math.max(padTop - 4, y - 4));
+            g2.drawString(labelNilai, x + (barWidth - nilaiWidth) / 2, Math.max(14, y - 5));
 
-            // Label nama kategori di bawah batang (dipersingkat jika terlalu panjang)
+            // Label kategori di bawah sumbu X (dipotong rapi agar tidak bertumpuk)
             g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
-            String labelKat = kategori.length() > 11 ? kategori.substring(0, 10) + ".." : kategori;
+            g2.setColor(new Color(80, 7, 36));
+            int maxChars = Math.max(6, slotWidth / 6);
+            String labelKat = kategori.length() > maxChars ? kategori.substring(0, maxChars - 1) + ".." : kategori;
             int katWidth = fm.stringWidth(labelKat);
-            g2.drawString(labelKat, x + (barWidth - katWidth) / 2, padTop + chartHeight + 15);
+            g2.drawString(labelKat, x + (barWidth - katWidth) / 2, padTop + chartHeight + 16);
 
             idx++;
         }
